@@ -20,6 +20,12 @@ pub extern "C" fn _start() -> ! {
 
     println!("Welcome! {}", ":D");
 
+    nuclea_r_os::init();
+
+    x86_64::instructions::interrupts::int3();
+
+    println!("No crash!");
+
     loop {}
 }
 

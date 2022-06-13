@@ -1,10 +1,12 @@
 #![cfg_attr(test, no_main)]
+#![feature(abi_x86_interrupt)]
 #![feature(custom_test_frameworks)]
 #![feature(panic_info_message)]
 #![no_std]
 #![reexport_test_harness_main = "test_main"]
 #![test_runner(crate::test_runner)]
 
+pub mod interrupts;
 pub mod qemu;
 pub mod serial;
 pub mod vga;
@@ -33,7 +35,9 @@ where
 #[cfg(test)]
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
+    init();
     test_main();
+    
     loop {}
 }
 
@@ -41,6 +45,10 @@ pub extern "C" fn _start() -> ! {
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     test_panic_handler(_info);
+}
+
+pub fn init() {
+    interrupts::idt_init();
 }
 
 pub fn test_panic_handler(_info: &PanicInfo) -> ! {
