@@ -15,16 +15,14 @@ use nuclea_r_os::vga;
 ///
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
+    println!("Welcome! {}", ":D");
+    
+    nuclea_r_os::init();
+    
+    println!("No crash!");
+    
     #[cfg(test)]
     test_main();
-
-    println!("Welcome! {}", ":D");
-
-    nuclea_r_os::init();
-
-    x86_64::instructions::interrupts::int3();
-
-    println!("No crash!");
 
     loop {}
 }
@@ -44,7 +42,7 @@ fn panic(_info: &PanicInfo) -> ! {
         _info.location().unwrap().line(),
         _info.location().unwrap().column()
     );
-    println!(" Message: {:#?}", _info.message().unwrap());
+    println!(" Message: \"{:#?}\"", _info.message().unwrap());
     // println!(" Payload: {:#?}", _info.payload().downcast_ref::<&str>());
     println!("! ============= !");
 

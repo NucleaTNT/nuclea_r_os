@@ -6,6 +6,7 @@
 #![reexport_test_harness_main = "test_main"]
 #![test_runner(crate::test_runner)]
 
+pub mod gdt;
 pub mod interrupts;
 pub mod qemu;
 pub mod serial;
@@ -48,7 +49,8 @@ fn panic(_info: &PanicInfo) -> ! {
 }
 
 pub fn init() {
-    interrupts::idt_init();
+    gdt::init_gdt();
+    interrupts::init_idt();
 }
 
 pub fn test_panic_handler(_info: &PanicInfo) -> ! {
