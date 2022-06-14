@@ -24,7 +24,7 @@ pub extern "C" fn _start() -> ! {
     #[cfg(test)]
     test_main();
 
-    loop {}
+    nuclea_r_os::hlt_loop();
 }
 
 #[cfg(not(test))]
@@ -46,7 +46,7 @@ fn panic(_info: &PanicInfo) -> ! {
     // println!(" Payload: {:#?}", _info.payload().downcast_ref::<&str>());
     println!("! ============= !");
 
-    loop {}
+    nuclea_r_os::hlt_loop();
 }
 
 #[cfg(test)]

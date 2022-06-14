@@ -14,7 +14,7 @@ pub extern "C" fn _start() -> ! {
     serial_println!("[FAILED] - Test failed to panic.\n");
     exit_qemu(QEMUExitCode::Failed);
 
-    loop {}
+    nuclea_r_os::hlt_loop();
 }
 
 #[panic_handler]
@@ -24,7 +24,7 @@ fn panic(_info: &PanicInfo) -> ! {
     serial_println!("Test complete! Exiting.\n");
     exit_qemu(QEMUExitCode::Success);
 
-    loop {}
+    nuclea_r_os::hlt_loop();
 }
 
 fn test_should_panic() {

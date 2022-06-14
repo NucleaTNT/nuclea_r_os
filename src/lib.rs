@@ -11,6 +11,7 @@ pub mod interrupts;
 pub mod qemu;
 pub mod serial;
 pub mod vga;
+pub mod pic;
 
 use crate::qemu::{exit_qemu, QEMUExitCode};
 use core::panic::PanicInfo;
@@ -39,7 +40,7 @@ pub extern "C" fn _start() -> ! {
     init();
     test_main();
     
-    loop {}
+    hlt_loop();
 }
 
 #[cfg(test)]
@@ -48,9 +49,18 @@ fn panic(_info: &PanicInfo) -> ! {
     test_panic_handler(_info);
 }
 
+pub fn hlt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
+}
+
 pub fn init() {
     gdt::init_gdt();
     interrupts::init_idt();
+
+    unsafe { interrupts::PICS.lock().initialize(); }
+    x86_64::instructions::interrupts::enable();
 }
 
 pub fn test_panic_handler(_info: &PanicInfo) -> ! {
@@ -67,7 +77,7 @@ pub fn test_panic_handler(_info: &PanicInfo) -> ! {
 
     exit_qemu(QEMUExitCode::Failed);
 
-    loop {}
+    hlt_loop();
 }
 
 pub fn test_runner(tests: &[&dyn Testable]) {

@@ -11,7 +11,7 @@ use nuclea_r_os::println;
 pub extern "C" fn _start() -> ! {
     test_main();
 
-    loop {}
+    nuclea_r_os::hlt_loop();
 }
 
 #[panic_handler]

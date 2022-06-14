@@ -55,7 +55,7 @@ extern "x86-interrupt" fn test_double_fault_handler(
 
     exit_qemu(QEMUExitCode::Success);
 
-    loop {}
+    nuclea_r_os::hlt_loop();
 }
 
 #[allow(unconditional_recursion)]

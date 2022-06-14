@@ -23,7 +23,12 @@ macro_rules! println {
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
-    WRITER.lock().write_fmt(args).unwrap();
+    use x86_64::instructions::interrupts;
+
+    // `without_interrupts` to prevent deadlocks
+    interrupts::without_interrupts(|| {
+        WRITER.lock().write_fmt(args).unwrap();
+    });
 }
 
 ///
@@ -193,13 +198,20 @@ fn test_println_vga_overflow() {
 
 #[test_case]
 fn test_println_output() {
+    use core::fmt::Write;
+    use x86_64::instructions::interrupts;
+
     let s = "Test string that fits on a single line.";
-    let row = WRITER.lock().cursor_position.1;
+    interrupts::without_interrupts(|| {
+        let mut writer = WRITER.lock(); // Keep writer locked for duration of test.
+        let row = writer.cursor_position.1;
+        
+        // `writeln!` allows writing to locked WRITER, newline to ensure no previously written chars interfere
+        writeln!(writer, "\n{}", s).expect("Failed to write to line."); 
 
-    println!("{}", s);
-
-    for (i, chr) in s.chars().enumerate() {
-        let screen_char = WRITER.lock().buffer.content[row - 1][i].read();
-        assert_eq!(char::from(screen_char.ascii_character), chr);
-    }
+        for (i, chr) in s.chars().enumerate() {
+            let screen_char = writer.buffer.content[row - 1][i].read();
+            assert_eq!(char::from(screen_char.ascii_character), chr);
+        }
+    });
 }
