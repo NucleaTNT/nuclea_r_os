@@ -1,6 +1,6 @@
 use crate::{
     gdt, pic, println,
-    vga::{Color, WRITER},
+    output::vga::{Color, WRITER},
 };
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;

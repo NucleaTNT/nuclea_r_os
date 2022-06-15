@@ -8,13 +8,16 @@
 
 pub mod gdt;
 pub mod interrupts;
-pub mod qemu;
-pub mod serial;
-pub mod vga;
+pub mod memory;
+pub mod output;
 pub mod pic;
+pub mod qemu;
 
-use crate::qemu::{exit_qemu, QEMUExitCode};
+#[cfg(test)]
+use bootloader::{BootInfo, entry_point};
+
 use core::panic::PanicInfo;
+use crate::qemu::{exit_qemu, QEMUExitCode};
 
 pub trait Testable {
     fn run(&self);
@@ -31,12 +34,14 @@ where
     }
 }
 
+#[cfg(test)]
+entry_point!(test_kernel_main);
+
 ///
 /// `cargo test` entry point.
 ///
 #[cfg(test)]
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
+fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
     init();
     test_main();
     
