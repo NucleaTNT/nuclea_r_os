@@ -20,7 +20,7 @@ impl BootInfoFrameAllocator {
     ///
     /// This function is unsafe as it is up to the caller to ensure that the
     /// passed memory map is valid. The main requirement is that all frame
-    /// that are marked as `USABLE` in it are really unused.
+    /// that are marked as `USABLE` in it are actually unused.
     pub unsafe fn new(memory_map: &'static MemoryMap) -> Self {
         BootInfoFrameAllocator {
             memory_map,

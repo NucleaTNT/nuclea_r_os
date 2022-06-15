@@ -1,10 +1,13 @@
 #![cfg_attr(test, no_main)]
 #![feature(abi_x86_interrupt)]
+#![feature(alloc_error_handler)]
 #![feature(custom_test_frameworks)]
 #![feature(panic_info_message)]
 #![no_std]
 #![reexport_test_harness_main = "test_main"]
 #![test_runner(crate::test_runner)]
+
+extern crate alloc;
 
 pub mod gdt;
 pub mod interrupts;
@@ -13,11 +16,13 @@ pub mod output;
 pub mod pic;
 pub mod qemu;
 
-#[cfg(test)]
-use bootloader::{BootInfo, entry_point};
+use alloc::alloc::Layout;
 
-use core::panic::PanicInfo;
+#[cfg(test)]
+use bootloader::{entry_point, BootInfo};
+
 use crate::qemu::{exit_qemu, QEMUExitCode};
+use core::panic::PanicInfo;
 
 pub trait Testable {
     fn run(&self);
@@ -44,8 +49,13 @@ entry_point!(test_kernel_main);
 fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
     init();
     test_main();
-    
+
     hlt_loop();
+}
+
+#[alloc_error_handler]
+fn alloc_error_handler(layout: Layout) -> ! {
+    panic!("Allocation Error: {:?}", layout);
 }
 
 #[cfg(test)]
@@ -64,7 +74,9 @@ pub fn init() {
     gdt::init_gdt();
     interrupts::init_idt();
 
-    unsafe { interrupts::PICS.lock().initialize(); }
+    unsafe {
+        interrupts::PICS.lock().initialize();
+    }
     x86_64::instructions::interrupts::enable();
 }
 
