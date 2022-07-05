@@ -1,6 +1,7 @@
 #![cfg_attr(test, no_main)]
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
+#![feature(const_mut_refs)]
 #![feature(custom_test_frameworks)]
 #![feature(panic_info_message)]
 #![no_std]

@@ -1,6 +1,8 @@
 use alloc::alloc::{GlobalAlloc, Layout};
-use core::ptr::null_mut;
-use linked_list_allocator::LockedHeap;
+use core::{
+    mem,
+    ptr::{null_mut, NonNull},
+};
 use x86_64::{
     structures::paging::{
         mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags as PTFlags, Size4KiB,
@@ -8,10 +10,25 @@ use x86_64::{
     VirtAddr,
 };
 
-pub const HEAP_START: usize = 0x_4444_4444_0000;
+const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 100 * 1024; // 100KiB
+const BLOCK_SIZES: &[usize] = &[8, 16, 32, 64, 128, 256, 512, 1024, 2048];
 
-pub struct Dummy;
+struct Dummy;
+
+struct FixedSizeBlockAllocator {
+    list_heads: [Option<&'static mut ListNode>; BLOCK_SIZES.len()],
+    fallback_allocator: linked_list_allocator::Heap,
+}
+
+struct ListNode {
+    next: Option<&'static mut ListNode>,
+}
+
+/// Wrapper around spin::Mutex to allow trait implementations
+struct Locked<T> {
+    inner: spin::Mutex<T>,
+}
 
 unsafe impl GlobalAlloc for Dummy {
     unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
@@ -23,8 +40,87 @@ unsafe impl GlobalAlloc for Dummy {
     }
 }
 
+impl FixedSizeBlockAllocator {
+    pub const fn new() -> Self {
+        const EMPTY: Option<&'static mut ListNode> = None;
+        FixedSizeBlockAllocator {
+            list_heads: [EMPTY; BLOCK_SIZES.len()],
+            fallback_allocator: linked_list_allocator::Heap::empty(),
+        }
+    }
+
+    fn fallback_alloc(&mut self, layout: Layout) -> *mut u8 {
+        match self.fallback_allocator.allocate_first_fit(layout) {
+            Ok(ptr) => ptr.as_ptr(),
+            Err(_) => null_mut(),
+        }
+    }
+
+    pub unsafe fn init(&mut self, heap_start: usize, heap_size: usize) {
+        self.fallback_allocator.init(heap_start, heap_size);
+    }
+}
+
+unsafe impl GlobalAlloc for Locked<FixedSizeBlockAllocator> {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        let mut allocator = self.lock();
+        match list_index(&layout) {
+            Some(index) => match allocator.list_heads[index].take() {
+                Some(node) => {
+                    allocator.list_heads[index] = node.next.take();
+                    node as *mut ListNode as *mut u8
+                }
+                None => {
+                    // No block exists in list -> allocate new block.
+                    // Only works if all block sizes are 2^
+                    let block_size = BLOCK_SIZES[index];
+                    let block_align = block_size;
+                    let layout = Layout::from_size_align(block_size, block_align).unwrap();
+                    allocator.fallback_alloc(layout)
+                }
+            },
+            None => allocator.fallback_alloc(layout),
+        }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        let mut allocator = self.lock();
+        match list_index(&layout) {
+            Some(index) => {
+                let new_node = ListNode {
+                    next: allocator.list_heads[index].take(),
+                };
+
+                // Verify block's size and alignment
+                assert!(mem::size_of::<ListNode>() <= BLOCK_SIZES[index]);
+                assert!(mem::align_of::<ListNode>() <= BLOCK_SIZES[index]);
+
+                let new_node_ptr = ptr as *mut ListNode;
+                new_node_ptr.write(new_node);
+                allocator.list_heads[index] = Some(&mut *new_node_ptr);
+            }
+            None => {
+                let ptr = NonNull::new(ptr).unwrap();
+                allocator.fallback_allocator.deallocate(ptr, layout);
+            }
+        }
+    }
+}
+
+impl<T> Locked<T> {
+    pub const fn new(inner: T) -> Self {
+        Locked {
+            inner: spin::Mutex::new(inner),
+        }
+    }
+
+    pub fn lock(&self) -> spin::MutexGuard<T> {
+        self.inner.lock()
+    }
+}
+
 #[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(FixedSizeBlockAllocator::new());
 
 pub fn init_heap(
     mapper: &mut impl Mapper<Size4KiB>,
@@ -56,4 +152,10 @@ pub fn init_heap(
     }
 
     Ok(())
+}
+
+fn list_index(layout: &Layout) -> Option<usize> {
+    let required_block_size = layout.size().max(layout.align());
+
+    BLOCK_SIZES.iter().position(|&s| s >= required_block_size)
 }
