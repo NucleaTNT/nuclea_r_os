@@ -8,13 +8,13 @@
 
 extern crate alloc;
 
-use alloc::{boxed::Box, vec, vec::Vec, rc::Rc};
+use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
 use nuclea_r_os::{
     memory::{
-        self, heap,
-        paging::{self, get_active_level_4_table, init_offset_page_table, BootInfoFrameAllocator},
+        heap,
+        paging::{init_offset_page_table, BootInfoFrameAllocator},
     },
     output::vga,
     println,
@@ -52,8 +52,11 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 
     // Create a reference-counted vector -> automatically freed when count reaches 0
     let ref_counted = Rc::new(vec![4, 5, 6, 7]);
-    let cloned_ref = ref_counted.clone(); 
-    println!("Current reference count is: {}.", Rc::strong_count(&cloned_ref));
+    let cloned_ref = ref_counted.clone();
+    println!(
+        "Current reference count is: {}.",
+        Rc::strong_count(&cloned_ref)
+    );
     core::mem::drop(ref_counted);
     println!("Reference count is {} now.", Rc::strong_count(&cloned_ref));
 

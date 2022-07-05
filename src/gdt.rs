@@ -21,7 +21,13 @@ lazy_static! {
         let code_selector = gdt.add_entry(Descriptor::kernel_code_segment());
         let tss_selector = gdt.add_entry(Descriptor::tss_segment(&TSS));
 
-        (gdt, Selectors { code_selector, tss_selector })
+        (
+            gdt,
+            Selectors {
+                code_selector,
+                tss_selector,
+            },
+        )
     };
 }
 
@@ -44,7 +50,10 @@ lazy_static! {
 }
 
 pub fn init_gdt() {
-    use x86_64::instructions::{segmentation::{CS, Segment}, tables::load_tss};
+    use x86_64::instructions::{
+        segmentation::{Segment, CS},
+        tables::load_tss,
+    };
 
     GDT.0.load();
     unsafe {

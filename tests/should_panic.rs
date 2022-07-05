@@ -4,7 +4,7 @@
 use core::panic::PanicInfo;
 use nuclea_r_os::{
     qemu::{exit_qemu, QEMUExitCode},
-    serial_println, serial_print,
+    serial_print, serial_println,
 };
 
 #[no_mangle]

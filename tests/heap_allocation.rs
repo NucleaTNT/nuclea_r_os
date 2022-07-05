@@ -9,7 +9,11 @@ extern crate alloc;
 use alloc::{boxed::Box, vec::Vec};
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
-use nuclea_r_os::memory::{self, heap::{self, HEAP_SIZE}, paging::BootInfoFrameAllocator};
+use nuclea_r_os::memory::{
+    self,
+    heap::{self, HEAP_SIZE},
+    paging::BootInfoFrameAllocator,
+};
 use x86_64::VirtAddr;
 
 entry_point!(main);
@@ -19,9 +23,7 @@ fn main(_boot_info: &'static BootInfo) -> ! {
 
     let phys_mem_offset = VirtAddr::new(_boot_info.physical_memory_offset);
     let mut mapper = unsafe { memory::paging::init_offset_page_table(phys_mem_offset) };
-    let mut frame_allocator = unsafe {
-        BootInfoFrameAllocator::new(&_boot_info.memory_map)
-    };
+    let mut frame_allocator = unsafe { BootInfoFrameAllocator::new(&_boot_info.memory_map) };
     heap::init_heap(&mut mapper, &mut frame_allocator).expect("Heap Initialization Failed.");
 
     test_main();
@@ -61,4 +63,14 @@ fn test_memory_freeing() {
         let x = Box::new(i);
         assert_eq!(*x, i);
     }
+}
+
+#[test_case]
+fn test_memory_freeing_long_lived() {
+    let long_lived = Box::new(1);
+    for i in 0..HEAP_SIZE {
+        let x = Box::new(i);
+        assert_eq!(*x, i);
+    }
+    assert_eq!(*long_lived, 1);
 }

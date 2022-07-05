@@ -1,6 +1,7 @@
 use crate::{
-    gdt, pic, println,
+    gdt,
     output::vga::{Color, WRITER},
+    pic, println,
 };
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
@@ -43,7 +44,8 @@ lazy_static! {
         }
 
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(pic::timer::int_timer_handler);
-        idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(pic::keyboard::int_keyboard_handler);
+        idt[InterruptIndex::Keyboard.as_usize()]
+            .set_handler_fn(pic::keyboard::int_keyboard_handler);
 
         idt
     };
