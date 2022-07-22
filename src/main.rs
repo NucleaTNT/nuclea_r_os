@@ -1,3 +1,4 @@
+#![allow(unreachable_code)]
 #![allow(unused_imports)]
 #![feature(custom_test_frameworks)]
 #![feature(panic_info_message)]
@@ -18,6 +19,7 @@ use nuclea_r_os::{
     },
     output::vga,
     println,
+    task::{executor::Executor, keyboard, Task},
 };
 use x86_64::{
     structures::paging::{Page, PageTable, Translate},
@@ -39,32 +41,25 @@ fn kernel_main(_boot_info: &'static BootInfo) -> ! {
 
     heap::init_heap(&mut mapper, &mut frame_allocator).expect("Heap Initialization Failed.");
 
-    // Allocate num on heap
-    let heap_val = Box::new(39);
-    println!("heap_val at {:p}", heap_val);
-
-    // Create dynamically-sized vector
-    let mut vec = Vec::new();
-    for i in 0..359 {
-        vec.push(i);
-    }
-    println!("vec at {:p}", vec.as_slice());
-
-    // Create a reference-counted vector -> automatically freed when count reaches 0
-    let ref_counted = Rc::new(vec![4, 5, 6, 7]);
-    let cloned_ref = ref_counted.clone();
-    println!(
-        "Current reference count is: {}.",
-        Rc::strong_count(&cloned_ref)
-    );
-    core::mem::drop(ref_counted);
-    println!("Reference count is {} now.", Rc::strong_count(&cloned_ref));
-
     #[cfg(test)]
     test_main();
 
+    let mut executor = Executor::new();
+    executor.spawn(Task::new(example_task()));
+    executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.run();
+
     println!("\n! === KERNEL END === !\n");
     nuclea_r_os::hlt_loop();
+}
+
+async fn async_number() -> u32 {
+    17
+}
+
+async fn example_task() {
+    let number = async_number().await;
+    println!("Async number: {}", number);
 }
 
 #[cfg(not(test))]

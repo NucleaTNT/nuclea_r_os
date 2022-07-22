@@ -16,6 +16,7 @@ pub mod memory;
 pub mod output;
 pub mod pic;
 pub mod qemu;
+pub mod task;
 
 use alloc::alloc::Layout;
 
